@@ -1,15 +1,17 @@
-# Classification on Stroke dataset using Machine Learning 
+# Classification on Stroke Dataset Using Machine Learning
 
-## About the files
-The main.py contins all the code of the project in python. Image folder contains the output images of the code, like bar charts. The .xlxs files contain data and we can know their use by their names.
+## About the Files
+The `main.py` file contains all the project code in Python. The `Image` folder contains output images from the code, like bar charts. The `.xlsx` files contain data, and their use is indicated by their names.
 
-## Methods of the code
-This project is a machine learning project on Stroke dataset. 
-First we have functions that help us understand the data better. Then we handle outlier and missing values and then we normalize data. 
-There are 5 different decision trees and as their output we can see the trees, rules and total number of rules.
-In future, other ML algorithms will be added. 
+## Methods of the Code
+This project is a machine learning project on the Stroke dataset.  
+- First, functions help us understand the data better.  
+- Next, we handle outliers and missing values and then normalize the data.  
+- There are five different decision trees, and their output includes visualizations of the trees, rules, and the total number of rules.
 
-## About the dataset
-The stroke dataset consist of 5110 records of patients with their attributes. the class feature is stroke and as other features we can name age, gender, work_type and so on. This dataset is wildely used in classification and there are papers using this dataset to make a classifier.
-The link to the dataset : https://www.kaggle.com/datasets/fedesoriano/stroke-prediction-dataset/code
+In the future, other ML algorithms will be added. 
 
+## About the Dataset
+The stroke dataset consists of 5110 records of patients with various attributes. The target feature is `stroke`, and other features include `age`, `gender`, `work_type`, and more. This dataset is widely used in classification tasks, and many papers have used it to build classifiers.
+
+**Dataset link**: [Stroke Prediction Dataset on Kaggle](https://www.kaggle.com/datasets/fedesoriano/stroke-prediction-dataset/code)
