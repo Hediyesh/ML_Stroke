@@ -1,0 +1,9 @@
+**Classification on Stroke dataset using Machine Learning**
+
+This project is a machine learning project on Stroke dataset. 
+First we have functions that help us understand the data better. Then we handle outlier and missing values and then we normalize data. 
+There are 5 different decision trees and as their output we can see the trees, rules and total number of rules.
+In future, other ML algorithms will be added. 
+
+The link to the dataset : https://www.kaggle.com/datasets/fedesoriano/stroke-prediction-dataset/code
+
