@@ -14,4 +14,4 @@ In the future, other ML algorithms will be added.
 ## About the Dataset
 The stroke dataset consists of 5110 records of patients with various attributes. The target feature is `stroke`, and other features include `age`, `gender`, `work_type`, and more. This dataset is widely used in classification tasks, and many papers have used it to build classifiers.
 
-**Dataset link**: [Stroke Prediction Dataset on Kaggle](https://www.kaggle.com/datasets/fedesoriano/stroke-prediction-dataset/code)
+**Dataset link**: [Stroke Prediction Dataset on Kaggle](https://www.kaggle.com/datasets/fedesoriano/stroke-prediction-dataset/data)
