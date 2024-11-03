@@ -1,4 +1,4 @@
-**Classification on Stroke dataset using Machine Learning**
+<strong> Classification on Stroke dataset using Machine Learning </strong>
 
 This project is a machine learning project on Stroke dataset. 
 First we have functions that help us understand the data better. Then we handle outlier and missing values and then we normalize data. 
