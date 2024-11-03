@@ -1,9 +1,15 @@
-<strong> Classification on Stroke dataset using Machine Learning </strong>
+# Classification on Stroke dataset using Machine Learning 
 
+## About the files
+The main.py contins all the code of the project in python. Image folder contains the output images of the code, like bar charts. The .xlxs files contain data and we can know their use by their names.
+
+## Methods of the code
 This project is a machine learning project on Stroke dataset. 
 First we have functions that help us understand the data better. Then we handle outlier and missing values and then we normalize data. 
 There are 5 different decision trees and as their output we can see the trees, rules and total number of rules.
 In future, other ML algorithms will be added. 
 
+## About the dataset
+The stroke dataset consist of 5110 records of patients with their attributes. the class feature is stroke and as other features we can name age, gender, work_type and so on. This dataset is wildely used in classification and there are papers using this dataset to make a classifier.
 The link to the dataset : https://www.kaggle.com/datasets/fedesoriano/stroke-prediction-dataset/code
 
