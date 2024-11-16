@@ -8,6 +8,9 @@ from sklearn.tree import DecisionTreeClassifier, plot_tree, export_text
 from sklearn.metrics import accuracy_score, recall_score, precision_score, f1_score, classification_report
 from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier, GradientBoostingClassifier
 from xgboost import XGBClassifier
+from sklearn.svm import SVC
+from sklearn.naive_bayes import GaussianNB
+import warnings
 
 
 # Function to load the data
@@ -349,8 +352,84 @@ def xgboost_model(X_train, X_test, y_train, y_test):
     evaluate_model(xgb_model, X_train, X_test, y_train, y_test)
 
 
+# SVM implementation
+def svm_classifier(X_train, y_train, X_test, y_test):
+    kernels = ['linear', 'poly', 'rbf', 'sigmoid']
+    results = {}
+
+    for kernel in kernels:
+        model = SVC(kernel=kernel)
+        model.fit(X_train, y_train)
+        y_pred = model.predict(X_test)
+
+        # Calculate metrics
+        accuracy = accuracy_score(y_test, y_pred)
+        precision = precision_score(y_test, y_pred)
+        recall = recall_score(y_test, y_pred)
+        f1 = f1_score(y_test, y_pred)
+
+        results[kernel] = {
+            'Accuracy': accuracy,
+            'Precision': precision,
+            'Recall': recall,
+            'F1 Score': f1
+        }
+
+    return results
+
+
+# Naive Bayes implementation
+def naive_bayes_classifier(X_train, y_train, X_test, y_test):
+    model = GaussianNB()
+    model.fit(X_train, y_train)
+    y_pred = model.predict(X_test)
+
+    # Calculate metrics
+    accuracy = accuracy_score(y_test, y_pred)
+    precision = precision_score(y_test, y_pred)
+    recall = recall_score(y_test, y_pred)
+    f1 = f1_score(y_test, y_pred)
+
+    results = {
+        'Accuracy': accuracy,
+        'Precision': precision,
+        'Recall': recall,
+        'F1 Score': f1
+    }
+
+    return results
+
+
+# KNN implementation
+def knn_classifier(X_train, y_train, X_test, y_test):
+    results = {}
+
+    for k in range(2, 11):  # Testing k values from 2 to 10
+        model = KNeighborsClassifier(n_neighbors=k)
+        model.fit(X_train, y_train)
+        y_pred = model.predict(X_test)
+
+        # Calculate metrics
+        accuracy = accuracy_score(y_test, y_pred)
+        precision = precision_score(y_test, y_pred)
+        recall = recall_score(y_test, y_pred)
+        f1 = f1_score(y_test, y_pred)
+
+        results[f'k={k}'] = {
+            'Accuracy': accuracy,
+            'Precision': precision,
+            'Recall': recall,
+            'F1 Score': f1
+        }
+
+    return results
+
+
 # Main function
 def main():
+    # Ignore all warnings
+    warnings.filterwarnings('ignore')
+
     filepath = 'normalized_stroke_data.xlsx'
     # Load data
     data = load_data(filepath)
@@ -385,6 +464,30 @@ def main():
     # visualize_some_rules_from_boosting(xgb_model, X_train)
     # total_number_of_rules(xgb_model)
 
+    # Call SVM function
+    print("SVM Classifier Results:")
+    svm_results = svm_classifier(X_train, y_train, X_test, y_test)
+    for kernel, metrics in svm_results.items():
+        print(f"Kernel: {kernel}")
+        for metric_name, value in metrics.items():
+            print(f"  {metric_name}: {value:.4f}")
+        print()
+
+    # Call Naive Bayes function
+    print("Naive Bayes Classifier Results:")
+    nb_results = naive_bayes_classifier(X_train, y_train, X_test, y_test)
+    for metric_name, value in nb_results.items():
+        print(f"  {metric_name}: {value:.4f}")
+    print()
+
+    # Call KNN function
+    print("KNN Classifier Results:")
+    knn_results = knn_classifier(X_train, y_train, X_test, y_test)
+    for k_value, metrics in knn_results.items():
+        print(f"K: {k_value}")
+        for metric_name, value in metrics.items():
+            print(f"  {metric_name}: {value:.4f}")
+        print()
 
 # Run the main function with your file path
 if __name__ == "__main__":
