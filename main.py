@@ -1,36 +1,23 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.preprocessing import OneHotEncoder
-from sklearn.model_selection import train_test_split
-from sklearn.tree import DecisionTreeClassifier, plot_tree, export_text
-from sklearn.metrics import accuracy_score, recall_score, precision_score, f1_score, classification_report
-from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier, GradientBoostingClassifier
-from xgboost import XGBClassifier
-from sklearn.svm import SVC
-from sklearn.naive_bayes import GaussianNB
 import warnings
 
 
-# Function to load the data
-def load_data(filepath):
-    """Load data from an Excel file."""
-    try:
-        data = pd.read_excel(filepath)
-        return data
-    except Exception as e:
-        print(f"Error loading data: {e}")
-        return None
-
-
 # Function to get null counts in each feature, treating 'Unknown' as null in smoking_status
-def get_null_counts(data):
-    """Get the count of null values for each feature, treating 'Unknown' in smoking_status as null."""
-    data = data.copy()  # Avoid modifying the original data
-    data['smoking_status'] = data['smoking_status'].replace('Unknown', pd.NA)  # Replace 'Unknown' with NA
-    null_counts = data.isnull().sum()
-    print("Null counts for each feature:\n", null_counts)
+def print_null_counts(df):
+    df_copy = df.copy()
+
+    # Treat 'Unknown' in 'smoking_status' as NaN
+    if 'smoking_status' in df_copy.columns:
+        df_copy['smoking_status'] = df_copy['smoking_status'].replace('Unknown', pd.NA)
+
+    # Count nulls
+    null_counts = df_copy.isna().sum()
+
+    # Print results
+    for col, count in null_counts.items():
+        print(f"{col}: {count} null values")
 
 
 def summarize_features(data):
@@ -74,44 +61,45 @@ def plot_and_save_categorical_bars(data):
         plt.xticks(rotation=45)
 
         # Save plot as JPG
-        plt.savefig(f'{column}_value_counts.jpg', format='jpg')
+        plt.savefig(f'images/{column}_value_counts.jpg', format='jpg')
         plt.close()  # Close the figure to free memory
 
 
-# Function to get records with age less than 1
-def get_records_with_age_less_than_one(data):
-    # Filter records where age is less than 1
-    records = data[data['age'] < 1][['age', 'work_type']]
-    count = len(records)
-
-    # Print and return the count and filtered records
-    print(f"Number of records with age less than 1: {count}")
-    print("Records with age less than 1:")
-    print(records)
-
-
 # Function to plot a heatmap of correlations in the dataset
-def plot_data_heatmap(data, output_filename="heatmap.jpg"):
-    # Drop the 'id' feature if it exists
-    if 'id' in data.columns:
-        data = data.drop(columns=['id'])
+def heatmap_label_encode(df):
+    df_copy = df.copy()
+    # Treat 'Unknown' in 'smoking_status' as NaN
+    if 'smoking_status' in df_copy.columns:
+        df_copy['smoking_status'] = df_copy['smoking_status'].replace('Unknown', pd.NA)
 
-    # Apply one-hot encoding to categorical features
-    data_encoded = pd.get_dummies(data, drop_first=True)
+    for col in df_copy.select_dtypes(include=['object']).columns:
+        df_copy[col] = df_copy[col].astype('category').cat.codes
 
-    # Compute correlation matrix
-    correlation_matrix = data_encoded.corr()
+    # Plot heatmap
+    plt.figure(figsize=(12, 8))
+    sns.heatmap(df_copy.corr(), annot=True, cmap='coolwarm', fmt=".2f", linewidths=0.5)
 
-    # Plot heatmap with annotations
-    plt.figure(figsize=(12, 10))
-    sns.heatmap(correlation_matrix, annot=True, fmt=".2f", cmap="YlGnBu")
-    plt.title("Annotated Heatmap Including Categorical Features (One-Hot Encoded)")
+    # Save the figure
+    plt.title("Feature Correlation Heatmap")
+    plt.savefig('images/feature_correlation_heatmap.jpg', format='jpg')
+    plt.show()
 
-    # Save heatmap as .jpg file
-    plt.savefig(output_filename, format="jpg", dpi=300)
-    plt.close()
 
-    print(f"Heatmap saved as {output_filename}")
+def heatmap_one_hot_encode(df):
+    if 'smoking_status' in df.columns:
+        df['smoking_status'] = df['smoking_status'].replace('Unknown', pd.NA)
+
+    # One-hot encode categorical variables
+    df_numeric = pd.get_dummies(df, drop_first=True)  # Avoid dummy variable trap
+
+    # Plot heatmap
+    plt.figure(figsize=(12, 8))
+    sns.heatmap(df_numeric.corr(), annot=True, cmap='coolwarm', fmt=".2f", linewidths=0.5)
+
+    # Save the figure
+    plt.title("Feature Correlation Heatmap")
+    plt.savefig('images/feature_correlation_heatmap_one_hot.jpg', format='jpg')
+    plt.show()
 
 
 # Function to plot and save bar charts for specified features
@@ -151,343 +139,133 @@ def remove_other_gender(filepath):
     print(f"Records with 'gender=Other' removed and data saved to {filepath}")
 
 
-# Function to impute bmi null values with median and Unknown smoking status with knn
-def impute_bmi_smoking(data):
-    # Step 1: Impute BMI with Median
-    data['bmi'] = data['bmi'].fillna(data['bmi'].median())
-
-    # Step 2: Separate records with known and unknown smoking status
-    known_smoking = data[data['smoking_status'] != 'Unknown']
-    unknown_smoking = data[data['smoking_status'] == 'Unknown']
-
-    # Define nominal and numeric columns
-    nominal_cols = ['gender', 'ever_married', 'work_type', 'Residence_type']
-    numeric_cols = ['age', 'hypertension', 'heart_disease', 'avg_glucose_level', 'bmi']
-
-    # Encode nominal columns using OneHotEncoder
-    encoder = OneHotEncoder(drop='first', sparse_output=False)
-    known_encoded_nominal = encoder.fit_transform(known_smoking[nominal_cols])
-    unknown_encoded_nominal = encoder.transform(unknown_smoking[nominal_cols])
-
-    # Combine numeric and encoded nominal columns for known and unknown data
-    known_features = pd.concat(
-        [pd.DataFrame(known_encoded_nominal), known_smoking[numeric_cols].reset_index(drop=True)],
-        axis=1
-    )
-    unknown_features = pd.concat(
-        [pd.DataFrame(unknown_encoded_nominal), unknown_smoking[numeric_cols].reset_index(drop=True)],
-        axis=1
-    )
-
-    # Convert column names to strings to avoid mixed type error
-    known_features.columns = known_features.columns.astype(str)
-    unknown_features.columns = unknown_features.columns.astype(str)
-
-    # Step 3: Use KNN to predict the smoking status for unknown records
-    knn = KNeighborsClassifier(n_neighbors=4)
-    knn.fit(known_features, known_smoking['smoking_status'])
-
-    # Predict smoking status for unknown records
-    imputed_smoking_status = knn.predict(unknown_features)
-    data.loc[data['smoking_status'] == 'Unknown', 'smoking_status'] = imputed_smoking_status
-
-    # Save the imputed data to a new Excel file
-    data.to_excel('imputed_stroke_data.xlsx', index=False)
-    print('Imputed data is saved.')
+# scatter plot of data
+def scatterPlot(data):
+    dff = data.copy()
+    sns.pairplot(data=dff, hue='stroke', kind='scatter', palette='bright')
+    plt.savefig('images/scatterPlot.jpg', format='jpg')
+    plt.show()
 
 
-# Function to normal data
-def normalize_data(data):
-    # Map categorical features
-    data['gender'] = data['gender'].map({'Male': 0, 'Female': 1}).astype(int)
-    data['ever_married'] = data['ever_married'].map({'No': 0, 'Yes': 1}).astype(int)
-    data['work_type'] = data['work_type'].map(
-        {'Private': 1, 'Self-employed': 0.75, 'Govt_job': 0.5, 'children': 0.25, 'Never_worked': 0}).astype(float)
-    data['Residence_type'] = data['Residence_type'].map({'Urban': 0, 'Rural': 1}).astype(int)
-    data['smoking_status'] = data['smoking_status'].map(
-        {'never smoked': 0, 'formerly smoked': 0.5, 'smokes': 1}).astype(float)
-
-    # Apply Z-index normalization to 'age', 'avg_glucose_level', and 'bmi'
-    for feature in ['age', 'avg_glucose_level', 'bmi']:
-        # Rescale to [0, 1] range
-        data[feature] = (data[feature] - data[feature].min()) / (data[feature].max() - data[feature].min())
-
-    # Save to a new file
-    data.to_excel("normalized_stroke_data.xlsx", index=False)
-    print("Normalized data saved to 'normalized_stroke_data.xlsx'")
+# pie chart of stroke 0 and 1
+def piechart(df):
+    outcome_counts = df["stroke"].value_counts()
+    outcome_counts.plot(kind="pie", autopct="%1.1f%%", startangle=90)
+    plt.title("Distribution of Stroke")
+    plt.ylabel("")
+    plt.savefig('images/piechart_stroke.jpg', format='jpg')
+    plt.show()
 
 
-# Function to split test and train 30% and 70%
-def split_data_test_train(data, class_column='stroke'):
-    # Count the number of samples for each class
-    class_counts = data[class_column].value_counts()
-    print(f"Class distribution:\n{class_counts}\n")
+# data feature description
+def describe(df):
+    summary = df.describe()
+    fig, ax = plt.subplots(figsize=(8, 4))
+    table_data = []
+    for col in summary.columns:
+        table_data.append([col] + list(summary[col].values))
 
-    # Calculate 70% and 30% split for each class
-    for class_value, count in class_counts.items():
-        train_count = int(count * 0.7)
-        test_count = count - train_count
-        print(f"Class {class_value}: Total = {count}, Train = {train_count}, Test = {test_count}")
-
-    # Separate each class and split 70% for train and 30% for test
-    train_data = pd.DataFrame()
-    test_data = pd.DataFrame()
-
-    for class_value in class_counts.index:
-        class_data = data[data[class_column] == class_value]
-
-        # Perform the 70-30 split for the current class
-        class_train, class_test = train_test_split(class_data, test_size=0.3, random_state=42)
-
-        # Append to train and test datasets
-        train_data = pd.concat([train_data, class_train], ignore_index=True)
-        test_data = pd.concat([test_data, class_test], ignore_index=True)
-
-    print("\nData has been split into training and testing sets.")
-    print(f"Training set size: {len(train_data)}, Testing set size: {len(test_data)}")
-
-    train_data.to_excel("train_data.xlsx", index=False)
-    test_data.to_excel("test_data.xlsx", index=False)
-    print("Training and testing sets saved.")
+    table = ax.table(cellText=table_data,
+                     colLabels=['Statistic'] + ['count', 'mean', 'std', 'min', '25%', '50%', '70%', 'max'],
+                     cellLoc='center', loc='center')
+    table.auto_set_font_size(False)
+    table.set_fontsize(10)
+    table.scale(1.2, 1.2)
+    ax.axis('off')
+    plt.savefig('images/description.jpg', format='jpg')
+    plt.show()
 
 
-# General function to train and evaluate a model
-def evaluate_model(model, X_train, X_test, y_train, y_test, show_rules=True):
-    # Train the model directly
-    model.fit(X_train, y_train)
-    y_pred = model.predict(X_test)
+# bar charts for data
+def all_bar_charts(df):
+    # Fix: Replace 'Unknown' in smoking_status with NaN (standardized format)
+    df['smoking_status'] = df['smoking_status'].replace('Unknown', None)
 
-    # Evaluation metrics
-    accuracy = accuracy_score(y_test, y_pred)
-    recall = recall_score(y_test, y_pred, average='weighted')
-    precision = precision_score(y_test, y_pred, average='weighted')
-    f1 = f1_score(y_test, y_pred, average='weighted')
+    # Select categorical columns + binary columns
+    categorical_columns = df.select_dtypes(include=['object', 'category']).columns.tolist()
+    binary_columns = ['hypertension', 'heart_disease', 'stroke']
 
-    # Print results
-    print(f"\nModel: {model.__class__.__name__}")
-    print("Accuracy:", accuracy)
-    print("Recall:", recall)
-    print("Precision:", precision)
-    print("F1 Score:", f1)
+    # Combine categorical + binary features
+    all_categorical = categorical_columns + binary_columns
 
-    # Show rules if applicable
-    if show_rules and isinstance(model, DecisionTreeClassifier):
-        rules = export_text(model, feature_names=X_train.columns.to_list())
-        print("\nDecision Tree Rules:\n", rules)
-        print("\nTotal number of rules:", rules.count('\n'))
-        plot_tree(model, feature_names=X_train.columns, filled=True)
-        plt.show()
+    # Set up subplots
+    num_cols = len(all_categorical)
+    fig, axes = plt.subplots(nrows=(num_cols // 3) + 1, ncols=3, figsize=(15, 5 * ((num_cols // 3) + 1)))
+    axes = axes.flatten()  # Flatten axes for easy iteration
 
-    elif show_rules and isinstance(model, RandomForestClassifier):
-        for idx, estimator in enumerate(model.estimators_[:3]):  # Show rules for the first 3 trees
-            print(f"\nRules for Tree {idx + 1} in Random Forest:")
-            rules = export_text(estimator, feature_names=X_train.columns.to_list())
-            print(rules)
-            print("\nTotal number of rules:", rules.count('\n'))
-            plt.figure(figsize=(15, 10))
-            plot_tree(estimator, feature_names=X_train.columns, filled=True)
-            plt.show()
+    # Plot bar charts for all categorical & binary columns
+    for i, col in enumerate(all_categorical):
+        ax = axes[i]
+        sns.countplot(x=df[col], ax=ax, palette='coolwarm')
 
-    return accuracy, recall, precision, f1
+        # Add counts on bars
+        for p in ax.patches:
+            ax.annotate(f'{p.get_height()}', (p.get_x() + p.get_width() / 2, p.get_height()),
+                        ha='center', va='bottom', fontsize=12, fontweight='bold', color='black')
 
+        ax.set_title(col, fontsize=14)
+        ax.set_ylabel("Count")
 
-# Show just a few trees and rules for classifiers
-def visualize_some_rules_from_boosting(model, X_train, num_trees=3):
-    print(f"\nVisualizing rules for the first {num_trees} trees in {model.__class__.__name__}:\n")
+    # Remove extra empty subplots (if any)
+    for j in range(i + 1, len(axes)):
+        fig.delaxes(axes[j])
 
-    # For AdaBoost
-    if hasattr(model, "estimators_"):
-        for idx in range(min(num_trees, len(model.estimators_))):
-            tree = model.estimators_[idx]
-            if isinstance(tree, (list, tuple)):  # For AdaBoost which uses nested lists
-                tree = tree[0]
-            print(f"\nRules for Tree {idx + 1}:\n")
-            print(export_text(tree, feature_names=X_train.columns.tolist()))
-            print("\n--- End of Tree ---\n")
-            plt.figure(figsize=(15, 10))
-            plot_tree(tree, feature_names=X_train.columns, filled=True)
-            plt.show()
-
-    # For XGBoost, access individual trees through get_booster
-    elif isinstance(model, XGBClassifier):
-        booster = model.get_booster()
-        for idx, tree_text in enumerate(booster.get_dump(dump_format="text")[:num_trees]):
-            print(f"\nRules for Tree {idx + 1} in XGBoost:\n")
-            print(tree_text)
-            print("\n--- End of Tree ---\n")
+    plt.tight_layout()
+    plt.savefig('images/categorical_features_bar_charts.jpg', format='jpg')
+    plt.show()
 
 
-# Total number of rules for classifiers
-def total_number_of_rules(model):
-    if hasattr(model, "estimators_"):
-        total_rules = sum(estimator.tree_.node_count for estimator in model.estimators_)
-        print(f"Total number of rules in {model.__class__.__name__}: {total_rules}")
-    elif isinstance(model, XGBClassifier):
-        booster = model.get_booster()
-        total_rules = sum(tree.count("\n") for tree in booster.get_dump(dump_format="text"))
-        print(f"Total number of rules in XGBoost: {total_rules}")
+# Function to plot the distribution of avg_glucose_level, bmi, and age for stroke vs. non-stroke patients
+def plot_distributions(df):
+    # Features to visualize
+    numerical_features = ['avg_glucose_level', 'bmi', 'age']
+
+    # Set up subplots
+    fig, axes = plt.subplots(nrows=1, ncols=len(numerical_features), figsize=(18, 5))
+
+    for i, feature in enumerate(numerical_features):
+        ax = axes[i]
+        sns.kdeplot(df[df['stroke'] == 0][feature], label="No Stroke (0)", shade=True, color='blue', ax=ax)
+        sns.kdeplot(df[df['stroke'] == 1][feature], label="Stroke (1)", shade=True, color='red', ax=ax)
+
+        ax.set_title(f"Distribution of {feature}", fontsize=14)
+        ax.set_xlabel(feature)
+        ax.set_ylabel("Density")
+        ax.legend()
+
+    plt.tight_layout()
+    plt.savefig('images/stroke_feature_distributions.jpg', format='jpg')
+    plt.show()
 
 
-# Cart and C4.5 implementations
-def decision_tree_model(X_train, X_test, y_train, y_test):
-    dt_model = DecisionTreeClassifier(criterion='gini', max_depth=3, random_state=42)
-    evaluate_model(dt_model, X_train, X_test, y_train, y_test)
+# Function to plot a pairwise scatter plot matrix for avg_glucose_level, bmi, and age
+def plot_pairwise_scatter_numerical(df):
+    # Features to visualize
+    features = ['avg_glucose_level', 'bmi', 'age']
 
+    # Create pairwise scatter plot matrix
+    sns.pairplot(df[features], kind='scatter', diag_kind='kde', plot_kws={'alpha': 0.5})
 
-# Randomforest implementation
-def random_forest_model(X_train, X_test, y_train, y_test):
-    rf_model = RandomForestClassifier(n_estimators=10, max_depth=3, random_state=42)
-    evaluate_model(rf_model, X_train, X_test, y_train, y_test)
-
-
-# Adaboost implementation
-def adaboost_model(X_train, X_test, y_train, y_test):
-    ada_model = AdaBoostClassifier(n_estimators=50, random_state=42)
-    evaluate_model(ada_model, X_train, X_test, y_train, y_test)
-
-
-# XGboost implementation
-def xgboost_model(X_train, X_test, y_train, y_test):
-    xgb_model = XGBClassifier(n_estimators=100, use_label_encoder=False, eval_metric='logloss', random_state=42)
-    evaluate_model(xgb_model, X_train, X_test, y_train, y_test)
-
-
-# SVM implementation
-def svm_classifier(X_train, y_train, X_test, y_test):
-    kernels = ['linear', 'poly', 'rbf', 'sigmoid']
-    results = {}
-
-    for kernel in kernels:
-        model = SVC(kernel=kernel)
-        model.fit(X_train, y_train)
-        y_pred = model.predict(X_test)
-
-        # Calculate metrics
-        accuracy = accuracy_score(y_test, y_pred)
-        precision = precision_score(y_test, y_pred)
-        recall = recall_score(y_test, y_pred)
-        f1 = f1_score(y_test, y_pred)
-
-        results[kernel] = {
-            'Accuracy': accuracy,
-            'Precision': precision,
-            'Recall': recall,
-            'F1 Score': f1
-        }
-
-    return results
-
-
-# Naive Bayes implementation
-def naive_bayes_classifier(X_train, y_train, X_test, y_test):
-    model = GaussianNB()
-    model.fit(X_train, y_train)
-    y_pred = model.predict(X_test)
-
-    # Calculate metrics
-    accuracy = accuracy_score(y_test, y_pred)
-    precision = precision_score(y_test, y_pred)
-    recall = recall_score(y_test, y_pred)
-    f1 = f1_score(y_test, y_pred)
-
-    results = {
-        'Accuracy': accuracy,
-        'Precision': precision,
-        'Recall': recall,
-        'F1 Score': f1
-    }
-
-    return results
-
-
-# KNN implementation
-def knn_classifier(X_train, y_train, X_test, y_test):
-    results = {}
-
-    for k in range(2, 11):  # Testing k values from 2 to 10
-        model = KNeighborsClassifier(n_neighbors=k)
-        model.fit(X_train, y_train)
-        y_pred = model.predict(X_test)
-
-        # Calculate metrics
-        accuracy = accuracy_score(y_test, y_pred)
-        precision = precision_score(y_test, y_pred)
-        recall = recall_score(y_test, y_pred)
-        f1 = f1_score(y_test, y_pred)
-
-        results[f'k={k}'] = {
-            'Accuracy': accuracy,
-            'Precision': precision,
-            'Recall': recall,
-            'F1 Score': f1
-        }
-
-    return results
+    # Display plot
+    plt.suptitle('Scatter Plot', fontsize=16)
+    plt.savefig("images/scatter_plots_for_numerical_features.jpg", format='jpg')
+    plt.show()
 
 
 # Main function
 def main():
     # Ignore all warnings
     warnings.filterwarnings('ignore')
+    file_path = 'healthcare-dataset-stroke-data-noid.xlsx'
+    df = pd.read_excel(file_path)
+    # Print counts of stroke = 0 and 1
+    # stroke_counts = df['stroke'].value_counts()
+    # print(stroke_counts)
 
-    filepath = 'normalized_stroke_data.xlsx'
-    # Load data
-    data = load_data(filepath)
-    if data is None:
-        return
+    # Handle missing values in 'bmi' (if any)
+    # df['bmi'] = pd.to_numeric(df['bmi'], errors='coerce')
+    # plot_pairwise_scatter_numerical(df)
 
-    # read test and train
-    train_data = pd.read_excel('train_data.xlsx')
-    test_data = pd.read_excel('test_data.xlsx')
-
-    # separate x and y in test and train data
-    X_train = train_data.drop(columns=['stroke'])
-    y_train = train_data['stroke']
-    X_test = test_data.drop(columns=['stroke'])
-    y_test = test_data['stroke']
-
-    # Decision Tree
-    # decision_tree_model(X_train, X_test, y_train, y_test)
-
-    # Random Forest
-    # random_forest_model(X_train, X_test, y_train, y_test)
-
-    # AdaBoost
-    # ada_model = AdaBoostClassifier(n_estimators=50, random_state=42)
-    # evaluate_model(ada_model, X_train, X_test, y_train, y_test)
-    # visualize_some_rules_from_boosting(ada_model, X_train)
-    # total_number_of_rules(ada_model)
-
-    # XGBoost
-    # xgb_model = XGBClassifier(n_estimators=100, use_label_encoder=False, eval_metric='logloss', random_state=42)
-    # evaluate_model(xgb_model, X_train, X_test, y_train, y_test)
-    # visualize_some_rules_from_boosting(xgb_model, X_train)
-    # total_number_of_rules(xgb_model)
-
-    # Call SVM function
-    print("SVM Classifier Results:")
-    svm_results = svm_classifier(X_train, y_train, X_test, y_test)
-    for kernel, metrics in svm_results.items():
-        print(f"Kernel: {kernel}")
-        for metric_name, value in metrics.items():
-            print(f"  {metric_name}: {value:.4f}")
-        print()
-
-    # Call Naive Bayes function
-    print("Naive Bayes Classifier Results:")
-    nb_results = naive_bayes_classifier(X_train, y_train, X_test, y_test)
-    for metric_name, value in nb_results.items():
-        print(f"  {metric_name}: {value:.4f}")
-    print()
-
-    # Call KNN function
-    print("KNN Classifier Results:")
-    knn_results = knn_classifier(X_train, y_train, X_test, y_test)
-    for k_value, metrics in knn_results.items():
-        print(f"K: {k_value}")
-        for metric_name, value in metrics.items():
-            print(f"  {metric_name}: {value:.4f}")
-        print()
 
 # Run the main function with your file path
 if __name__ == "__main__":

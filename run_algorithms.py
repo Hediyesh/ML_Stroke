@@ -1,8 +1,9 @@
 import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 import os
-import numpy as np
 import warnings
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
@@ -10,25 +11,8 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import AdaBoostClassifier
 from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier
-from lightgbm import LGBMClassifier
 from xgboost import XGBClassifier
-
-
-kernels = ['linear', 'poly', 'rbf', 'sigmoid']
-
-
-def evaluate_svm(X_train, y_train, X_test, y_test, kernel):
-    # Initialize and train the SVM
-    model = SVC(kernel=kernel, random_state=42)
-    model.fit(X_train, y_train)
-    # Make predictions
-    y_pred = model.predict(X_test)
-    # Calculate metrics
-    accuracy = accuracy_score(y_test, y_pred)
-    precision = precision_score(y_test, y_pred, zero_division=1)
-    recall = recall_score(y_test, y_pred, zero_division=1)
-    f1 = f1_score(y_test, y_pred, zero_division=1)
-    return accuracy, precision, recall, f1
+from imblearn.over_sampling import SMOTE
 
 
 def log_results_to_excel(file_path, algorithm, accuracy, precision, recall, f1_score, excel_file='run_algorithms.xlsx'):
@@ -56,519 +40,6 @@ def log_results_to_excel(file_path, algorithm, accuracy, precision, recall, f1_s
     # Save the combined data back to the Excel file using ExcelWriter in a safe way
     with pd.ExcelWriter(excel_file, engine='openpyxl', mode='w') as writer:
         combined_data.to_excel(writer, index=False)
-
-
-def evaluate_random_forest(X_train, y_train, X_test, y_test, n_estimators):
-    # Initialize RandomForestClassifier
-    rf_model = RandomForestClassifier(n_estimators=n_estimators, random_state=42)
-
-    # Train the model
-    rf_model.fit(X_train, y_train)
-
-    # Make predictions
-    y_pred = rf_model.predict(X_test)
-
-    # Calculate metrics
-    accuracy = accuracy_score(y_test, y_pred)
-    precision = precision_score(y_test, y_pred)
-    recall = recall_score(y_test, y_pred)
-    f1 = f1_score(y_test, y_pred)
-    return accuracy, precision, recall, f1
-
-
-# Logistic Regression
-def evaluate_logistic_regression(X_train, y_train, X_test, y_test):
-    lr_model = LogisticRegression(random_state=42, max_iter=1000)
-    lr_model.fit(X_train, y_train)
-    y_pred = lr_model.predict(X_test)
-
-    accuracy = accuracy_score(y_test, y_pred)
-    precision = precision_score(y_test, y_pred)
-    recall = recall_score(y_test, y_pred)
-    f1 = f1_score(y_test, y_pred)
-    return accuracy, precision, recall, f1
-
-
-# CART (Decision Tree Classifier)
-def evaluate_cart(X_train, y_train, X_test, y_test):
-    cart_model = DecisionTreeClassifier(random_state=42)
-    cart_model.fit(X_train, y_train)
-    y_pred = cart_model.predict(X_test)
-
-    accuracy = accuracy_score(y_test, y_pred)
-    precision = precision_score(y_test, y_pred)
-    recall = recall_score(y_test, y_pred)
-    f1 = f1_score(y_test, y_pred)
-    return accuracy, precision, recall, f1
-
-
-# C4.5 (Decision Tree with entropy criterion)
-def evaluate_c4_5(X_train, y_train, X_test, y_test):
-    c4_5_model = DecisionTreeClassifier(criterion='entropy', random_state=42)
-    c4_5_model.fit(X_train, y_train)
-    y_pred = c4_5_model.predict(X_test)
-
-    accuracy = accuracy_score(y_test, y_pred)
-    precision = precision_score(y_test, y_pred)
-    recall = recall_score(y_test, y_pred)
-    f1 = f1_score(y_test, y_pred)
-    return accuracy, precision, recall, f1
-
-
-# AdaBoost
-def evaluate_adaboost(X_train, y_train, X_test, y_test, n_estimators):
-    ada_model = AdaBoostClassifier(n_estimators=n_estimators, random_state=42)
-    ada_model.fit(X_train, y_train)
-    y_pred = ada_model.predict(X_test)
-
-    accuracy = accuracy_score(y_test, y_pred)
-    precision = precision_score(y_test, y_pred)
-    recall = recall_score(y_test, y_pred)
-    f1 = f1_score(y_test, y_pred)
-    return accuracy, precision, recall, f1
-
-
-# LightGBM
-def evaluate_lightgbm(X_train, y_train, X_test, y_test, n_estimators):
-    lgbm_model = LGBMClassifier(n_estimators=n_estimators, random_state=42)
-    lgbm_model.fit(X_train, y_train)
-    y_pred = lgbm_model.predict(X_test)
-
-    accuracy = accuracy_score(y_test, y_pred)
-    precision = precision_score(y_test, y_pred)
-    recall = recall_score(y_test, y_pred)
-    f1 = f1_score(y_test, y_pred)
-    return accuracy, precision, recall, f1
-
-
-# XGBoost
-def evaluate_xgboost(X_train, y_train, X_test, y_test, n_estimators):
-    xgb_model = XGBClassifier(n_estimators=n_estimators, use_label_encoder=False, eval_metric='logloss',
-                              random_state=42)
-    xgb_model.fit(X_train, y_train)
-    y_pred = xgb_model.predict(X_test)
-
-    accuracy = accuracy_score(y_test, y_pred)
-    precision = precision_score(y_test, y_pred)
-    recall = recall_score(y_test, y_pred)
-    f1 = f1_score(y_test, y_pred)
-    return accuracy, precision, recall, f1
-
-
-# Naive Bayes
-def evaluate_naive_bayes(X_train, y_train, X_test, y_test):
-    nb_model = GaussianNB()
-    nb_model.fit(X_train, y_train)
-    y_pred = nb_model.predict(X_test)
-
-    accuracy = accuracy_score(y_test, y_pred)
-    precision = precision_score(y_test, y_pred)
-    recall = recall_score(y_test, y_pred)
-    f1 = f1_score(y_test, y_pred)
-    return accuracy, precision, recall, f1
-
-
-# KNN (k from 2 to 10)
-def evaluate_knn(X_train, y_train, X_test, y_test, k):
-    # Ensure X_train and X_test are in the correct format
-    if not isinstance(X_train, (pd.DataFrame, np.ndarray)):
-        X_train = pd.DataFrame(X_train)
-    if not isinstance(X_test, (pd.DataFrame, np.ndarray)):
-        X_test = pd.DataFrame(X_test)
-
-    # Convert to numpy arrays for sklearn compatibility
-    X_train = X_train.values if isinstance(X_train, pd.DataFrame) else X_train
-    X_test = X_test.values if isinstance(X_test, pd.DataFrame) else X_test
-
-    # Initialize KNN with k neighbors
-    knn_model = KNeighborsClassifier(n_neighbors=k)
-    knn_model.fit(X_train, y_train)
-
-    # Make predictions
-    y_pred = knn_model.predict(X_test)
-
-    # Calculate metrics
-    accuracy = accuracy_score(y_test, y_pred)
-    precision = precision_score(y_test, y_pred)
-    recall = recall_score(y_test, y_pred)
-    f1 = f1_score(y_test, y_pred)
-
-    return accuracy, precision, recall, f1
-
-
-def evaluate_method_for_1_and_2(method, n_estimators):
-    folder_1 = 'split_test_train/smote_results/'
-    folder_2 = 'split_test_train/smote_balanced_results/'
-    for folder in [folder_1, folder_2]:
-        for file in os.listdir(folder):
-            if file.startswith('train') and file.endswith('.xlsx'):
-                test_file = file.replace('_smote', '').replace('train', 'test')
-                train_data = pd.read_excel(os.path.join(folder, file))
-                test_data = pd.read_excel(os.path.join(folder, test_file))
-                X_train = train_data.drop('stroke', axis=1)
-                y_train = train_data['stroke']
-                X_test = test_data.drop('stroke', axis=1)
-                y_test = test_data['stroke']
-                if method == "lr":
-                    accuracy, precision, recall, f1 = evaluate_logistic_regression(X_train, y_train, X_test, y_test)
-                    # Log results
-                    log_results_to_excel(
-                        file_path=os.path.join(folder, file),
-                        algorithm=f"{method}",
-                        accuracy=accuracy,
-                        precision=precision,
-                        recall=recall,
-                        f1_score=f1
-                    )
-                elif method == "knn":
-                    for knn_k in range(2, 11):
-                        accuracy, precision, recall, f1 = evaluate_knn(X_train, y_train, X_test, y_test, knn_k)
-                        # Log results
-                        log_results_to_excel(
-                            file_path=os.path.join(folder, file),
-                            algorithm=f"{method}(k={knn_k})",
-                            accuracy=accuracy,
-                            precision=precision,
-                            recall=recall,
-                            f1_score=f1
-                        )
-                elif method == "nb":
-                    accuracy, precision, recall, f1 = evaluate_naive_bayes(X_train, y_train, X_test, y_test)
-                    # Log results
-                    log_results_to_excel(
-                        file_path=os.path.join(folder, file),
-                        algorithm=f"{method}",
-                        accuracy=accuracy,
-                        precision=precision,
-                        recall=recall,
-                        f1_score=f1
-                    )
-                elif method == "xgboost":
-                    accuracy, precision, recall, f1 = evaluate_xgboost(X_train, y_train, X_test, y_test, n_estimators)
-                    # Log results
-                    log_results_to_excel(
-                        file_path=os.path.join(folder, file),
-                        algorithm=f"{method}(n_estimators={n_estimators})",
-                        accuracy=accuracy,
-                        precision=precision,
-                        recall=recall,
-                        f1_score=f1
-                    )
-                elif method == "rf":
-                    accuracy, precision, recall, f1 = evaluate_random_forest(X_train, y_train, X_test, y_test, n_estimators)
-                    # Log results
-                    log_results_to_excel(
-                        file_path=os.path.join(folder, file),
-                        algorithm=f"{method}(n_estimators={n_estimators})",
-                        accuracy=accuracy,
-                        precision=precision,
-                        recall=recall,
-                        f1_score=f1
-                    )
-                elif method == "lightgbm":
-                    accuracy, precision, recall, f1 = evaluate_lightgbm(X_train, y_train, X_test, y_test, n_estimators)
-                    # Log results
-                    log_results_to_excel(
-                        file_path=os.path.join(folder, file),
-                        algorithm=f"{method}(n_estimators={n_estimators})",
-                        accuracy=accuracy,
-                        precision=precision,
-                        recall=recall,
-                        f1_score=f1
-                    )
-                elif method == "adaboost":
-                    accuracy, precision, recall, f1 = evaluate_adaboost(X_train, y_train, X_test, y_test, n_estimators)
-                    # Log results
-                    log_results_to_excel(
-                        file_path=os.path.join(folder, file),
-                        algorithm=f"{method}(n_estimators={n_estimators})",
-                        accuracy=accuracy,
-                        precision=precision,
-                        recall=recall,
-                        f1_score=f1
-                    )
-                elif method == "cart":
-                    accuracy, precision, recall, f1 = evaluate_cart(X_train, y_train, X_test, y_test)
-                    # Log results
-                    log_results_to_excel(
-                        file_path=os.path.join(folder, file),
-                        algorithm=f"{method}",
-                        accuracy=accuracy,
-                        precision=precision,
-                        recall=recall,
-                        f1_score=f1
-                    )
-                elif method == "c4.5":
-                    accuracy, precision, recall, f1 = evaluate_c4_5(X_train, y_train, X_test, y_test)
-                    # Log results
-                    log_results_to_excel(
-                        file_path=os.path.join(folder, file),
-                        algorithm=f"{method}",
-                        accuracy=accuracy,
-                        precision=precision,
-                        recall=recall,
-                        f1_score=f1
-                    )
-                elif method == "svm":
-                    for kernel in kernels:
-                        accuracy, precision, recall, f1 = evaluate_svm(X_train, y_train, X_test, y_test, kernel)
-                        # Log results
-                        log_results_to_excel(
-                            file_path=os.path.join(folder, file),
-                            algorithm=f"{method}(kernel={kernel})",
-                            accuracy=accuracy,
-                            precision=precision,
-                            recall=recall,
-                            f1_score=f1
-                        )
-
-# For all methods except knn and svm
-def evaluate_method_for_3(method, n_estimators):
-    input_folder = 'preprocess/impute_missing_values/cleaned/'
-    sample_folder = 'split_test_train/sample_results/'
-    for file in os.listdir(input_folder):
-        if file.endswith('.xlsx'):
-            data = pd.read_excel(os.path.join(input_folder, file))
-            train_indices = np.load(os.path.join(sample_folder, f"train_indices_{file}.npy"), allow_pickle=True)
-            test_indices = np.load(os.path.join(sample_folder, f"test_indices_{file}.npy"), allow_pickle=True)
-            total_accuracy = total_precision = total_recall = total_f1 = 0
-            for i in range(10):
-                train_idx = train_indices[i]
-                test_idx = test_indices[i]
-                train_data = data.loc[train_idx]
-                test_data = data.loc[test_idx]
-                X_train = train_data.drop('stroke', axis=1)
-                y_train = train_data['stroke']
-                X_test = test_data.drop('stroke', axis=1)
-                y_test = test_data['stroke']
-                accuracy, precision, recall, f1 = 0, 0, 0, 0
-                if method == "lr":
-                    accuracy, precision, recall, f1 = evaluate_logistic_regression(X_train, y_train, X_test, y_test)
-                    # Log results
-                    log_results_to_excel(
-                        file_path=os.path.join(input_folder, file),
-                        algorithm=f"{method}",
-                        accuracy=accuracy,
-                        precision=precision,
-                        recall=recall,
-                        f1_score=f1
-                    )
-                elif method == "nb":
-                    accuracy, precision, recall, f1 = evaluate_naive_bayes(X_train, y_train, X_test, y_test)
-                    # Log results
-                    log_results_to_excel(
-                        file_path=os.path.join(input_folder, file),
-                        algorithm=f"{method}",
-                        accuracy=accuracy,
-                        precision=precision,
-                        recall=recall,
-                        f1_score=f1
-                    )
-                elif method == "xgboost":
-                    accuracy, precision, recall, f1 = evaluate_xgboost(X_train, y_train, X_test, y_test, n_estimators)
-                    # Log results
-                    log_results_to_excel(
-                        file_path=os.path.join(input_folder, file),
-                        algorithm=f"{method}(n_estimators={n_estimators})",
-                        accuracy=accuracy,
-                        precision=precision,
-                        recall=recall,
-                        f1_score=f1
-                    )
-                elif method == "rf":
-                    accuracy, precision, recall, f1 = evaluate_random_forest(X_train, y_train, X_test, y_test, n_estimators)
-                    # Log results
-                    log_results_to_excel(
-                        file_path=os.path.join(input_folder, file),
-                        algorithm=f"{method}(n_estimators={n_estimators})",
-                        accuracy=accuracy,
-                        precision=precision,
-                        recall=recall,
-                        f1_score=f1
-                    )
-                elif method == "lightgbm":
-                    accuracy, precision, recall, f1 = evaluate_lightgbm(X_train, y_train, X_test, y_test, n_estimators)
-                    # Log results
-                    log_results_to_excel(
-                        file_path=os.path.join(input_folder, file),
-                        algorithm=f"{method}(n_estimators={n_estimators})",
-                        accuracy=accuracy,
-                        precision=precision,
-                        recall=recall,
-                        f1_score=f1
-                    )
-                elif method == "adaboost":
-                    accuracy, precision, recall, f1 = evaluate_adaboost(X_train, y_train, X_test, y_test, n_estimators)
-                    # Log results
-                    log_results_to_excel(
-                        file_path=os.path.join(input_folder, file),
-                        algorithm=f"{method}(n_estimators={n_estimators})",
-                        accuracy=accuracy,
-                        precision=precision,
-                        recall=recall,
-                        f1_score=f1
-                    )
-                elif method == "cart":
-                    accuracy, precision, recall, f1 = evaluate_cart(X_train, y_train, X_test, y_test)
-                    # Log results
-                    log_results_to_excel(
-                        file_path=os.path.join(input_folder, file),
-                        algorithm=f"{method}",
-                        accuracy=accuracy,
-                        precision=precision,
-                        recall=recall,
-                        f1_score=f1
-                    )
-                elif method == "c4.5":
-                    accuracy, precision, recall, f1 = evaluate_c4_5(X_train, y_train, X_test, y_test)
-                    # Log results
-                    log_results_to_excel(
-                        file_path=os.path.join(input_folder, file),
-                        algorithm=f"{method}",
-                        accuracy=accuracy,
-                        precision=precision,
-                        recall=recall,
-                        f1_score=f1
-                    )
-                total_accuracy += accuracy
-                total_precision += precision
-                total_recall += recall
-                total_f1 += f1
-            # Calculate and log average metrics
-            avg_accuracy = total_accuracy / 10
-            avg_precision = total_precision / 10
-            avg_recall = total_recall / 10
-            avg_f1 = total_f1 / 10
-            if method == "rf" or method == "xgboost" or method == "adaboost" or method == "lightgbm":
-                log_results_to_excel(
-                    file_path=os.path.join(input_folder, file),
-                    algorithm=f"average_{method}(n_estimators={n_estimators})",
-                    accuracy=avg_accuracy,
-                    precision=avg_precision,
-                    recall=avg_recall,
-                    f1_score=avg_f1,
-                )
-            else:
-                log_results_to_excel(
-                    file_path=os.path.join(input_folder, file),
-                    algorithm=f"average_{method}",
-                    accuracy=avg_accuracy,
-                    precision=avg_precision,
-                    recall=avg_recall,
-                    f1_score=avg_f1,
-                )
-
-
-def evaluate_svm_for_3():
-    input_folder = 'preprocess/impute_missing_values/cleaned/'
-    sample_folder = 'split_test_train/sample_results/'
-    for file in os.listdir(input_folder):
-        if file.endswith('.xlsx'):
-            data = pd.read_excel(os.path.join(input_folder, file))
-            train_indices = np.load(os.path.join(sample_folder, f"train_indices_{file}.npy"), allow_pickle=True)
-            test_indices = np.load(os.path.join(sample_folder, f"test_indices_{file}.npy"), allow_pickle=True)
-
-            for kernel in kernels:
-                total_accuracy = total_precision = total_recall = total_f1 = 0
-
-                for i in range(10):
-                    train_idx = train_indices[i]
-                    test_idx = test_indices[i]
-
-                    train_data = data.loc[train_idx]
-                    test_data = data.loc[test_idx]
-
-                    X_train = train_data.drop('stroke', axis=1)
-                    y_train = train_data['stroke']
-                    X_test = test_data.drop('stroke', axis=1)
-                    y_test = test_data['stroke']
-
-                    accuracy, precision, recall, f1 = evaluate_svm(X_train, y_train, X_test, y_test, kernel)
-                    total_accuracy += accuracy
-                    total_precision += precision
-                    total_recall += recall
-                    total_f1 += f1
-
-                    # Log individual sample results
-                    log_results_to_excel(
-                        file_path=os.path.join(input_folder, file),
-                        algorithm=f"SVM(kernel={kernel})_sample_{i+1}",
-                        accuracy=accuracy,
-                        precision=precision,
-                        recall=recall,
-                        f1_score=f1
-                    )
-
-                # Calculate and log average metrics
-                avg_accuracy = total_accuracy / 10
-                avg_precision = total_precision / 10
-                avg_recall = total_recall / 10
-                avg_f1 = total_f1 / 10
-
-                log_results_to_excel(
-                    file_path=os.path.join(input_folder, file),
-                    algorithm=f"average_SVM(kernel={kernel})",
-                    accuracy=avg_accuracy,
-                    precision=avg_precision,
-                    recall=avg_recall,
-                    f1_score=avg_f1,
-                )
-
-
-def evaluate_knn_for_3():
-    input_folder = 'preprocess/impute_missing_values/cleaned/'
-    sample_folder = 'split_test_train/sample_results/'
-    for file in os.listdir(input_folder):
-        if file.endswith('.xlsx'):
-            data = pd.read_excel(os.path.join(input_folder, file))
-            train_indices = np.load(os.path.join(sample_folder, f"train_indices_{file}.npy"), allow_pickle=True)
-            test_indices = np.load(os.path.join(sample_folder, f"test_indices_{file}.npy"), allow_pickle=True)
-
-            for k in range(2, 11):
-                total_accuracy = total_precision = total_recall = total_f1 = 0
-
-                for i in range(10):
-                    train_idx = train_indices[i]
-                    test_idx = test_indices[i]
-
-                    train_data = data.loc[train_idx]
-                    test_data = data.loc[test_idx]
-
-                    X_train = train_data.drop('stroke', axis=1)
-                    y_train = train_data['stroke']
-                    X_test = test_data.drop('stroke', axis=1)
-                    y_test = test_data['stroke']
-
-                    accuracy, precision, recall, f1 = evaluate_knn(X_train, y_train, X_test, y_test, k)
-                    total_accuracy += accuracy
-                    total_precision += precision
-                    total_recall += recall
-                    total_f1 += f1
-
-                    # Log individual sample results
-                    log_results_to_excel(
-                        file_path=os.path.join(input_folder, file),
-                        algorithm=f"KNN(k={k})",
-                        accuracy=accuracy,
-                        precision=precision,
-                        recall=recall,
-                        f1_score=f1
-                    )
-
-                # Calculate and log average metrics
-                avg_accuracy = total_accuracy / 10
-                avg_precision = total_precision / 10
-                avg_recall = total_recall / 10
-                avg_f1 = total_f1 / 10
-
-                log_results_to_excel(
-                    file_path=os.path.join(input_folder, file),
-                    algorithm=f"average_KNN(k={k})",
-                    accuracy=avg_accuracy,
-                    precision=avg_precision,
-                    recall=avg_recall,
-                    f1_score=avg_f1,
-                )
 
 
 def select_top_algorithms():
@@ -599,20 +70,83 @@ def select_top_algorithms():
     print(top_3_algorithms)
 
 
+def find_best_algorithm(file_path):
+    data = pd.read_excel(file_path)
+    # Define features (X) and target (y)
+    target_column = 'stroke'
+    X = data.drop(columns=[target_column])
+    y = data[target_column]
+    smote = SMOTE(random_state=42)
+    X_resampled, y_resampled = smote.fit_resample(X, y)
+
+    # Split the resampled data
+    X_train, X_test, y_train, y_test = train_test_split(X_resampled, y_resampled, test_size=0.2, random_state=42)
+
+    # Convert back to DataFrame
+    # df_resampled = pd.DataFrame(X_resampled, columns=X.columns)
+    # df_resampled['stroke'] = y_resampled
+    # train_indices, test_indices = train_test_split(df_resampled.index, test_size=0.2)
+    # X_train, X_test = X.loc[train_indices], X.loc[test_indices]
+    # y_train, y_test = y.loc[train_indices], y.loc[test_indices]
+    # Standardize features if needed
+    scaler = StandardScaler()
+    X_train = scaler.fit_transform(X_train)
+    X_test = scaler.transform(X_test)
+
+    # Define models
+    models = {
+        "k-Nearest Neighbors 2": KNeighborsClassifier(n_neighbors=2),
+        "k-Nearest Neighbors 3": KNeighborsClassifier(n_neighbors=3),
+        "k-Nearest Neighbors 4": KNeighborsClassifier(n_neighbors=4),
+        "k-Nearest Neighbors 5": KNeighborsClassifier(n_neighbors=5),
+        "k-Nearest Neighbors 6": KNeighborsClassifier(n_neighbors=6),
+        "k-Nearest Neighbors 7": KNeighborsClassifier(n_neighbors=7),
+        "k-Nearest Neighbors 8": KNeighborsClassifier(n_neighbors=8),
+        "k-Nearest Neighbors 9": KNeighborsClassifier(n_neighbors=9),
+        "k-Nearest Neighbors 10": KNeighborsClassifier(n_neighbors=10),
+        "Random Forest 100": RandomForestClassifier(n_estimators=100),
+        "Random Forest 90": RandomForestClassifier(n_estimators=90),
+        "Random Forest 80": RandomForestClassifier(n_estimators=80),
+        "Random Forest 70": RandomForestClassifier(n_estimators=70),
+        "Random Forest 60": RandomForestClassifier(n_estimators=60),
+        "Random Forest 50": RandomForestClassifier(n_estimators=50),
+        "Naive Bayes": GaussianNB(),
+        "SVM linear": SVC(kernel='linear', probability=True),
+        "SVM poly": SVC(kernel='poly', probability=True),
+        "SVM rbf": SVC(kernel='rbf', probability=True),
+        "SVM sigmoid": SVC(kernel='sigmoid', probability=True),
+        "Logistic Regression": LogisticRegression(max_iter=500),
+        "CART": DecisionTreeClassifier(),
+        "AdaBoost": AdaBoostClassifier(n_estimators=50),
+        "XGBoost": XGBClassifier(eval_metric='logloss', use_label_encoder=False),
+        "C4.5": DecisionTreeClassifier(criterion='entropy')  # Approximation for C4.5
+    }
+    for name, model in models.items():
+        model.fit(X_train, y_train)
+        y_pred = model.predict(X_test)
+
+        acc = accuracy_score(y_test, y_pred)
+        precision = precision_score(y_test, y_pred)
+        recall = recall_score(y_test, y_pred)
+        f1 = f1_score(y_test, y_pred)
+        log_results_to_excel(
+            file_path=file_path,
+            algorithm=model,
+            accuracy=acc,
+            precision=precision,
+            recall=recall,
+            f1_score=f1,
+        )
+
+
 def main():
     warnings.filterwarnings('ignore')
-    # methods: lr, nb, cart, c4.5, adaboost, xgboost, lightgbm(gave error), rf, svm, knn
-    n_estimators = 100
-    # evaluate_method_for_1_and_2("svm", n_estimators)
-    # print('done')
-    # evaluate_method_for_1_and_2("knn", n_estimators)
-    # print('done')
-    # evaluate_method_for_3("xgboost", n_estimators)
-    # print('1 2 done')
-    # evaluate_svm_for_3()
-    # print('done')
-    # evaluate_knn_for_3()
-    select_top_algorithms()
+    # methods: lr, nb, cart, c4.5, adaboost, xgboost, rf, svm, knn
+    # select_top_algorithms()
+    input_folder = 'preprocess/impute_missing_values/cleaned/'
+    # for file in os.listdir(input_folder):
+    #     if file.endswith('.xlsx'):
+    #         find_best_algorithm(os.path.join(input_folder, file))
 
 
 if __name__ == "__main__":

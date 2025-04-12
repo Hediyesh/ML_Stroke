@@ -36,7 +36,7 @@ def cat_no_num():
 # Function to detect and show outliers using the IQR method
 def show_outliers(df):
     # Columns to focus on
-    columns = ['bmi', 'age', 'avg_glucose_level']
+    columns = ['bmi', 'avg_glucose_level']
     outliers_count = {}
     # Create a figure with subplots (one for each feature)
     fig, axes = plt.subplots(1, len(columns), figsize=(15, 5))
@@ -66,6 +66,7 @@ def show_outliers(df):
 
     # Adjust layout for better visualization
     plt.tight_layout()
+    plt.savefig('images/outliers.jpg', format='jpg')
     plt.show()
 
     return outliers_count
@@ -80,6 +81,7 @@ def detect_outliers(df, column):
     upper_bound = Q3 + 1.5 * IQR
     return df[(df[column] < lower_bound) | (df[column] > upper_bound)]
 
+
 # Function to handle outliers and fill them with the given method
 def handle_outliers(df, column, method):
     outliers = detect_outliers(df, column)
@@ -92,6 +94,8 @@ def handle_outliers(df, column, method):
         median_value = df[column].median()
         df.loc[outliers.index, column] = median_value
     return df
+
+
 def impute_outlier(df):
     # Handle BMI and Glucose outliers and fill them with the same method
     methods = ['mean', 'median']
@@ -273,107 +277,13 @@ def process_files(input_folder, output_folder):
             print(f'Processed {file_name} and saved to {output_path}')
 
 
-# def gmm_clustering_and_save_summary(sheet_data, sheet_name, max_k=10):
-#     """
-#     Perform GMM clustering for each k and return the data with clusters and the summary.
-#     """
-#     # Extract relevant features for clustering
-#     features = ['age', 'avg_glucose_level']  # Adjust as needed
-#     if 'stroke' not in sheet_data.columns:
-#         print(f"Error: 'stroke' column is missing in sheet {sheet_name}. Skipping.")
-#         return [], sheet_data
-#
-#     # Clean the data (remove rows with missing values in important features)
-#     sheet_data_clean = sheet_data.dropna(subset=features + ['stroke'])
-#
-#     # Standardize the data
-#     scaler = StandardScaler()
-#     X = scaler.fit_transform(sheet_data_clean[features])
-#
-#     # List to store cluster summaries
-#     cluster_summary = []
-#
-#     # Apply GMM for each k (from 2 to max_k)
-#     for k in range(2, max_k + 1):
-#         print(f"Clustering with k={k} for {sheet_name}")
-#
-#         # Apply GMM
-#         gmm = GaussianMixture(n_components=k, random_state=42)
-#         sheet_data_clean[f'cluster_k={k}'] = gmm.fit_predict(X)
-#
-#         # Generate cluster summaries
-#         for cluster_id in range(k):
-#             cluster_data = sheet_data_clean[sheet_data_clean[f'cluster_k={k}'] == cluster_id]
-#             class_counts = cluster_data['stroke'].value_counts()
-#             total_count = len(cluster_data)
-#
-#             count_0 = class_counts.get(0, 0)
-#             count_1 = class_counts.get(1, 0)
-#
-#             percent_0 = (count_0 / total_count) * 100 if total_count > 0 else 0
-#             percent_1 = (count_1 / total_count) * 100 if total_count > 0 else 0
-#
-#             cluster_summary.append({
-#                 'sheet_name': sheet_name,
-#                 'k': k,
-#                 'cluster': cluster_id,
-#                 'count_0': count_0,
-#                 'count_1': count_1,
-#                 'percent_0': round(percent_0, 1),
-#                 'percent_1': round(percent_1, 1)
-#             })
-#
-#     return cluster_summary, sheet_data_clean
-#
-# def save_clusters_and_summaries(input_file, output_file_clusters, output_file_summary, max_k=10):
-#     """
-#     Process each sheet, apply GMM clustering, and save the full clustered data and summaries.
-#     """
-#     # Load the Excel file
-#     excel_data = pd.ExcelFile(input_file)
-#
-#     # List to hold cluster summaries
-#     cluster_summary = []
-#
-#     # Process each sheet and collect data
-#     all_clustered_data = {}
-#
-#     for sheet_name in excel_data.sheet_names:
-#         print(f"Processing sheet: {sheet_name}")
-#         sheet_data = pd.read_excel(input_file, sheet_name=sheet_name)
-#
-#         # Process and get cluster summaries for this sheet
-#         sheet_cluster_summary, sheet_data_with_clusters = gmm_clustering_and_save_summary(sheet_data, sheet_name, max_k=max_k)
-#
-#         # Add the summary for the current sheet to the overall summary list
-#         cluster_summary.extend(sheet_cluster_summary)
-#
-#         # Save the clustered data for each k to different sheets
-#         all_clustered_data[sheet_name] = sheet_data_with_clusters
-#
-#     # Save the clustered data to the output file
-#     with pd.ExcelWriter(output_file_clusters, engine='openpyxl') as writer_clusters:
-#         for sheet_name, sheet_data_with_clusters in all_clustered_data.items():
-#             for k in range(2, max_k + 1):
-#                 # Save data for each k
-#                 sheet_data_with_clusters.to_excel(
-#                     writer_clusters,
-#                     sheet_name=f"{sheet_name}_k={k}",
-#                     index=False
-#                 )
-#
-#     # Save the cluster summaries to the summary file
-#     with pd.ExcelWriter(output_file_summary, engine='openpyxl') as writer_summary:
-#         summary_df = pd.DataFrame(cluster_summary)
-#         summary_df.to_excel(writer_summary, index=False, sheet_name="Cluster Summary")
-#
-#     print(f"All sheets processed. Cluster data saved to {output_file_clusters} and summaries saved to {output_file_summary}.")
 
 def main():
     warnings.filterwarnings('ignore')
     # cat_no_num()
     # Load your dataset
-    file_path = 'preprocess/stroke-data-cat-to-num.xlsx'
+    # file_path = 'preprocess/stroke-data-cat-to-num.xlsx'
+    file_path = 'healthcare-dataset-stroke-data-noid.xlsx'
     df = pd.read_excel(file_path)
     # Get the count of outliers for each numerical feature
     # outliers = show_outliers(df)
