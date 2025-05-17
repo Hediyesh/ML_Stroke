@@ -331,6 +331,53 @@ def stacking_pred(X_train, y_train, X_test):
     y_pred = stacking_clf.predict(X_test)
     return y_pred
 
+def GWKNN(X_train, y_train, X_test, y_test, k):
+    # Fit the base KNN (only to find neighbors)
+    knn = KNeighborsClassifier(n_neighbors=k)
+    knn.fit(X_train, y_train)
+
+    # Get distances and indices of k-nearest neighbors
+    distances, indices = knn.kneighbors(X_test)
+
+    # Calculate sigma as the median of all distances
+    sigma = np.median(distances) + 0.3
+
+    # Avoid division by zero
+    sigma = sigma if sigma != 0 else 1e-8
+
+    # Gaussian weight function
+    def gaussian_weights(d, sigma):
+        return np.exp(- (d ** 2) / (2 * sigma ** 2))
+
+    # Weighted voting
+    predictions = []
+    for i in range(len(X_test)):
+        neighbor_idxs = indices[i]
+        neighbor_distances = distances[i]
+        neighbor_labels = y_train.iloc[neighbor_idxs]  # Make sure y_train is a Series
+
+        weights = gaussian_weights(neighbor_distances, sigma)
+
+        # Weighted class votes
+        class_votes = {}
+        for label, weight in zip(neighbor_labels, weights):
+            class_votes[label] = class_votes.get(label, 0) + weight
+
+        # Pick the class with the highest total weight
+        pred = max(class_votes.items(), key=lambda x: x[1])[0]
+        predictions.append(pred)
+
+    # Convert to array if needed
+    predictions = np.array(predictions)
+    acc = accuracy_score(y_test, predictions)
+    prc = precision_score(y_test, predictions)
+    rec = recall_score(y_test, predictions)
+    f1 = f1_score(y_test, predictions)
+
+    print(f"Accuracy: {acc:.4f}")
+    print(f"Precision: {prc:.4f}")
+    print(f"Recall: {rec:.4f}")
+    print(f"F1-score: {f1:.4f}")
 
 def dis_c(s, k):
     dis = 0
@@ -339,7 +386,7 @@ def dis_c(s, k):
     dis = math.sqrt(dis)
     return dis
 
-def evaluate_model(X_train, y_train, X_test, y_test, distance_threshold, k):
+def evaluate_model_knnOnly(X_train, y_train, X_test, y_test, distance_threshold, k):
     """
     Applies KNN for k from 2 to 10. If all k neighbors have distances below a threshold, KNN is used;
     otherwise, stacking is applied.
@@ -389,6 +436,82 @@ def evaluate_model(X_train, y_train, X_test, y_test, distance_threshold, k):
     print(f"Specificity: {specificity}")
     print("Confusion Matrix:")
     print(cm)
+    return acc, prc, rec, f1, specificity, cm
+
+
+def evaluate_model(X_train, y_train, X_test, y_test, distance_threshold, k):
+    """
+    Applies Gaussian Weighted KNN (σ=median) for k neighbors.
+    If all k neighbors have distances below threshold, GWKNN is used;
+    otherwise, stacking is applied.
+
+    Prints accuracy, precision, recall, F1-score, specificity, and confusion matrix.
+    """
+
+    X_test = X_test.copy()
+    y_test = y_test.copy()
+
+    # Fit base KNN to get neighbors
+    knn = KNeighborsClassifier(n_neighbors=k)
+    knn.fit(X_train, y_train)
+    distances, indices = knn.kneighbors(X_test)
+
+    # Apply distance threshold mask
+    knn_mask = np.all(distances < distance_threshold, axis=1)
+    stack_mask = ~knn_mask
+
+    # Initialize prediction array
+    y_pred_k = np.zeros(len(X_test), dtype=int)
+
+    # Gaussian-weighted KNN predictions
+    if knn_mask.any():
+        X_knn_idx = np.where(knn_mask)[0]
+        sigma = np.median(distances[knn_mask]) + 0.3 
+        sigma = sigma if sigma > 0 else 1e-8    # Avoid divide-by-zero
+
+        def gaussian_weights(d, sigma):
+            return np.exp(- (d ** 2) / (2 * sigma ** 2))
+
+        for i in X_knn_idx:
+            neighbor_idxs = indices[i]
+            neighbor_dists = distances[i]
+            neighbor_labels = y_train.iloc[neighbor_idxs]
+
+            weights = gaussian_weights(neighbor_dists, sigma)
+            weighted_votes = {}
+
+            for label, weight in zip(neighbor_labels, weights):
+                weighted_votes[label] = weighted_votes.get(label, 0) + weight
+
+            # Assign label with max weight
+            y_pred_k[i] = max(weighted_votes, key=weighted_votes.get)
+
+    # Stacking prediction for samples not using KNN
+    if stack_mask.any():
+        X_stack = X_test[stack_mask].to_numpy()
+        y_stack = stacking_pred(X_train, y_train, X_stack)
+        y_pred_k[stack_mask] = y_stack
+
+    # Evaluation
+    acc = accuracy_score(y_test, y_pred_k)
+    prc = precision_score(y_test, y_pred_k)
+    rec = recall_score(y_test, y_pred_k)
+    f1 = f1_score(y_test, y_pred_k)
+    cm = confusion_matrix(y_test, y_pred_k)
+    tn, fp, fn, tp = cm.ravel()
+    specificity = tn / (tn + fp) if (tn + fp) > 0 else 0
+
+    # Print results
+    print(f'Threshold: {distance_threshold}')
+    print(f'k: {k}')
+    print(f"Accuracy: {acc}")
+    print(f"Precision: {prc}")
+    print(f"Recall: {rec}")
+    print(f"F1-score: {f1}")
+    print(f"Specificity: {specificity}")
+    print("Confusion Matrix:")
+    print(cm)
+
     return acc, prc, rec, f1, specificity, cm
 
 def tuning_models(X_train, X_test, y_train, y_test):
@@ -5006,27 +5129,28 @@ def main():
     y_train = y.loc[train_test[0]['train']]
     # threshold_classifier(train_test, X, y)
     # stacking(X_train, X_test, y_train, y_test)
-    evaluate_classifiers(df, train_test[0]['train'], train_test[0]['test'], label_col='stroke')
-    # evaluate_model(X_train, y_train, X_test, y_test, threshold, k)
-    # thresholds = [0.1, 0.09, 0.08, 0.07, 0.06, 0.05, 0.04, 0.03, 0.02, 0.01]
-    # neighbors = [2, 3, 4, 5, 6, 7, 8, 9, 10]
-    # for th in thresholds:
-    #     for n in neighbors:
-    #         X_test = X.loc[train_test[0]['test']]
-    #         y_test = y.loc[train_test[0]['test']]
-    #         X_train = X.loc[train_test[0]['train']]
-    #         y_train = y.loc[train_test[0]['train']]
-    #         evaluate_model(X_train, y_train, X_test, y_test, th, n)
+    # evaluate_classifiers(df, train_test[0]['train'], train_test[0]['test'], label_col='stroke')
+    # GWKNN(X_train, y_train, X_test, y_test, k)
+    # evaluate_model(X_train, y_train, X_test, y_test, threshold, k)0.1, 0.09, 0.08, 0.07, 0.06, 0.05, , 0.03, 0.02, 0.01
+    thresholds = [0.04]
+    neighbors = [2, 3, 4, 5, 6, 7, 8, 9, 10]
+    for th in thresholds:
+        for n in neighbors:
+            X_test = X.loc[train_test[0]['test']]
+            y_test = y.loc[train_test[0]['test']]
+            X_train = X.loc[train_test[0]['train']]
+            y_train = y.loc[train_test[0]['train']]
+            evaluate_model(X_train, y_train, X_test, y_test, th, n)
     # make sure indexes are different
     # for i in range(0, 10):
     #     for j in range(i+1, 10):
     #         if i != j:
     #             if train_test[i]['test'] == train_test[j]['test']:
     #                 print(f'same:{i}, {j}')
-    avg_acc = 0.0
-    avg_prc = 0.0
-    avg_rec = 0.0
-    avg_f1 = 0.0
+    # avg_acc = 0.0
+    # avg_prc = 0.0
+    # avg_rec = 0.0
+    # avg_f1 = 0.0
     # for i in train_test:
     #     X_test = X.loc[i['test']]
     #     y_test = y.loc[i['test']]
